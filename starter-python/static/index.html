@@ -82,9 +82,8 @@
   @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
   .panel { background: var(--panel); border:1px solid var(--line); border-radius: 16px; padding: 1.1rem 1.2rem; backdrop-filter: blur(10px);
            box-shadow: var(--shadow); }
-  h2 { font: 600 .74rem var(--mono); text-transform:uppercase; letter-spacing:.14em; color:var(--accent-2); margin:0 0 .9rem;
+  h2 { font: 700 1.05rem var(--sans); letter-spacing:-.01em; color:var(--ink); margin:0 0 .9rem;
        display:flex; justify-content:space-between; align-items:center; gap: .5rem; }
-  h2 > span:first-child::before { content: "▸ "; color: var(--accent); }
   .stack { display:grid; gap:1.25rem; align-content: start; }
 
   .sessions { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
@@ -98,7 +97,7 @@
   .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
   .sid { font-family: var(--mono); font-size:.76rem; color: var(--accent-2); letter-spacing: .06em; }
   .title { font-weight:700; font-size:1.05rem; }
-  .badge { font-family: var(--mono); font-size:.7rem; padding:.12rem .55rem; border-radius:999px; border:1px solid currentColor; white-space: nowrap; letter-spacing:.04em; }
+  .badge { text-transform: capitalize; font-family: var(--mono); font-size:.7rem; padding:.12rem .55rem; border-radius:999px; border:1px solid currentColor; white-space: nowrap; letter-spacing:.04em; }
   .badge.active, .badge.s2 { color: var(--ok); box-shadow: 0 0 10px rgba(52,245,165,.18); }
   .badge.cancelled { color: var(--muted); }
   .badge.full, .badge.s4 { color: var(--err); box-shadow: 0 0 10px rgba(255,92,138,.2); }
@@ -126,7 +125,7 @@
   form.reserve { display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:.8rem; align-items:end; }
   @media (max-width: 760px) { form.reserve { grid-template-columns: 1fr; } }
   .field { display:grid; gap:.3rem; }
-  label { font: 600 .74rem var(--mono); color: var(--muted); letter-spacing: .04em; }
+  label { font: 600 .82rem var(--sans); color: var(--muted); }
   input, select { font: inherit; padding:.55rem .7rem; border-radius:9px; border:1px solid var(--line);
                   background: var(--field); color: var(--ink); width: 100%; transition: border-color .15s, box-shadow .15s; }
   input:focus, select:focus { border-color: var(--accent); box-shadow: var(--glow-a); outline: none; }
@@ -175,6 +174,16 @@
   .theme-ctl { display:inline-flex; align-items:center; gap:.35rem; }
   .theme-ctl select { width:auto; padding:.25rem .45rem; font-size:.78rem; }
   .header-right { display:flex; gap:.8rem; align-items:center; flex-wrap: wrap; }
+  .tech-only { display: none !important; }
+  body.tech .tech-only { display: revert !important; }
+  body.tech .keyfield.tech-only, body.tech .field.tech-only { display: grid !important; }
+  body.tech aside.receipts.tech-only { display: flex !important; }
+  body.tech .invariants.tech-only { display: grid !important; }
+  body.tech .row-actions .tech-only { display: inline-block !important; }
+  body:not(.tech) main { grid-template-columns: minmax(0, 1fr); max-width: 1000px; }
+  body:not(.tech) form.reserve { grid-template-columns: 1fr 1fr auto; }
+  @media (max-width: 760px) { body:not(.tech) form.reserve { grid-template-columns: 1fr; } }
+  .status { font-family: var(--sans) !important; font-size: .92rem !important; }
   .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -184,8 +193,8 @@
   <div class="brand">
     <div class="logo" aria-hidden="true"><span>SD</span></div>
     <div>
-      <h1>Session Seat Desk<span class="slash">// ops console</span></h1>
-      <div class="tag">Built with AI agents. Runs without one. Every number is read back from the server; every call leaves a receipt.</div>
+      <h1>Session Seat Desk</h1>
+      <div class="tag">Reserve and manage workshop seats.</div>
     </div>
   </div>
   <div class="header-right">
@@ -193,8 +202,9 @@
       <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select></span>
     <span class="theme-ctl"><label for="accent">Accent</label>
       <select id="accent"><option value="violet">Violet</option><option value="ocean">Ocean</option><option value="sunset">Sunset</option><option value="forest">Forest</option></select></span>
-    <label class="demo-toggle" for="demo-mode"><input type="checkbox" id="demo-mode"> Demo tools (writes test bookings)</label>
-    <div class="pill" id="health" title="Server health"><span class="dot" id="health-dot"></span><span id="health-text">connecting…</span></div>
+    <label class="demo-toggle" for="tech-mode"><input type="checkbox" id="tech-mode"> Technical details</label>
+    <label class="demo-toggle tech-only" for="demo-mode"><input type="checkbox" id="demo-mode"> Demo tools (writes test bookings)</label>
+    <div class="pill" id="health" title="Connection status"><span class="dot" id="health-dot"></span><span id="health-text">Connecting…</span></div>
   </div>
 </header>
 
@@ -202,9 +212,9 @@
   <div class="stack">
     <section class="panel" aria-labelledby="sessions-h">
       <h2 id="sessions-h"><span>Sessions</span>
-        <span><span class="tag" id="sessions-updated"></span> <button type="button" class="sm ghost" id="refresh">↻ Refresh from server</button></span></h2>
+        <span><span class="tag" id="sessions-updated"></span> <button type="button" class="sm ghost" id="refresh">↻ Refresh</button></span></h2>
       <div class="sessions" id="sessions"></div>
-      <div class="invariants" id="invariants" aria-label="Invariant checks on the latest server readback"></div>
+       <div class="invariants tech-only" id="invariants" aria-label="Invariant checks on the latest server readback"></div>
     </section>
 
     <section class="panel" aria-labelledby="reserve-h">
@@ -215,10 +225,10 @@
           <select id="session" name="sessionId" required></select>
         </div>
         <div class="field">
-          <label for="alias">Attendee alias</label>
+          <label for="alias">Attendee name</label>
           <input id="alias" name="attendeeAlias" autocomplete="off" required placeholder="e.g. Ada" aria-describedby="alias-hint">
         </div>
-        <div class="field">
+        <div class="field tech-only keyfield">
           <label for="key">Request key</label>
           <div class="keyrow">
             <input id="key" class="mono" name="requestKey" autocomplete="off" required aria-describedby="key-hint">
@@ -226,8 +236,8 @@
           </div>
         </div>
         <button type="submit" class="primary" id="reserve-btn">Reserve</button>
-        <div class="hint full-row"><span id="alias-hint">Fictional aliases only; surrounding spaces are trimmed.</span>
-          <span id="key-hint">Same key = same reservation (idempotent). A fresh key is generated after each confirmed booking.</span></div>
+        <div class="hint full-row"><span id="alias-hint">Use a fictional name.</span>
+          <span id="key-hint" class="tech-only">Same key = same reservation (idempotent). A fresh key is generated after each confirmed booking.</span></div>
       </form>
       <div id="status" class="status" role="status" aria-live="polite"></div>
     </section>
@@ -236,14 +246,14 @@
       <h2 id="res-h"><span>Reservations</span><span class="tag" id="res-count"></span></h2>
       <div class="table-wrap">
         <table>
-          <thead><tr><th scope="col">Reservation ID</th><th scope="col">Session</th><th scope="col">Alias</th><th scope="col">Request key</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <thead><tr><th scope="col" class="tech-only">Reservation ID</th><th scope="col">Session</th><th scope="col">Attendee</th><th scope="col" class="tech-only">Request key</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
           <tbody id="res-body"></tbody>
         </table>
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="lookup-h">
-      <h2 id="lookup-h">Independent readback</h2>
+    <section class="panel tech-only" aria-labelledby="lookup-h">
+      <h2 id="lookup-h">Look up a reservation</h2>
       <form class="lookup" id="lookup-form" novalidate>
         <div class="field">
           <label for="lookup-id">Reservation ID</label>
@@ -255,8 +265,8 @@
     </section>
   </div>
 
-  <aside class="panel receipts" aria-labelledby="rcpt-h">
-    <h2 id="rcpt-h"><span>Execution trace · receipts <span class="tag" id="rcpt-count"></span></span><button type="button" class="sm ghost" id="clear-log">Clear</button></h2>
+  <aside class="panel receipts tech-only" aria-labelledby="rcpt-h">
+    <h2 id="rcpt-h"><span>HTTP activity <span class="tag" id="rcpt-count"></span></span><button type="button" class="sm ghost" id="clear-log">Clear</button></h2>
     <div class="log" id="log" aria-live="off"></div>
   </aside>
 </main>
@@ -282,9 +292,14 @@ function newKey() {
   if (window.crypto && crypto.randomUUID) return 'ui-' + crypto.randomUUID().slice(0, 13);
   return 'ui-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
+const tech = () => document.body.classList.contains('tech');
+const titleOf = (id) => { const s = sessionsCache.find(x => x.id === id); return s ? s.title : id; };
 function show(msg, ok) { statusEl.textContent = msg; statusEl.className = 'status ' + (ok ? 'ok' : 'err'); }
 function errText(body, res) {
-  if (body && body.error) return typeof body.error === 'string' ? body.error : (body.error.code + ': ' + body.error.message);
+  if (body && body.error) {
+    if (typeof body.error === 'string') return body.error;
+    return tech() ? body.error.code + ': ' + body.error.message : body.error.message;
+  }
   return 'HTTP ' + res.status;
 }
 
@@ -342,13 +357,14 @@ $('clear-log').addEventListener('click', () => { $('log').replaceChildren(); rec
 /* ---------- health ---------- */
 function setHealth(ok, text) {
   $('health-dot').className = 'dot ' + (ok ? 'live' : 'down');
-  $('health-text').textContent = text || (ok ? 'server live' : 'server unreachable');
+  $('health-text').textContent = text || (ok ? 'Online' : 'Offline');
 }
 async function pollHealth() {
   try {
     const res = await fetch('/health', { cache: 'no-store' });
     const d = await res.json();
-    setHealth(res.ok, 'live · SQLite ' + (d.stateFile || '').split(/[\\/]/).slice(-2).join('/'));
+    setHealth(res.ok, 'Online');
+    $('health').title = 'Server online. State file: ' + (d.stateFile || 'unknown');
   } catch (e) { setHealth(false); }
 }
 
@@ -370,11 +386,11 @@ async function loadSessions(quiet) {
     const card = h('article', { class: 'card' + (full ? ' full' : '') + (s.id === selected ? ' selected' : ''), 'data-session-id': s.id, 'aria-label': s.title },
       h('div', { class: 'card-top' },
         h('div', {}, h('div', { class: 'sid' }, s.id), h('div', { class: 'title' }, s.title)),
-        h('span', { class: 'badge ' + (full ? 'full' : 'open') }, full ? 'FULL' : 'OPEN')),
+        h('span', { class: 'badge ' + (full ? 'full' : 'open') }, full ? 'Full' : 'Open')),
       h('div', { class: 'seats', role: 'img', 'aria-label': s.activeCount + ' of ' + s.capacity + ' seats taken' }, seats),
       h('dl', { class: 'stats' },
         h('div', {}, h('dt', {}, 'Capacity'), h('dd', {}, s.capacity)),
-        h('div', {}, h('dt', {}, 'Active'), h('dd', {}, s.activeCount)),
+        h('div', {}, h('dt', {}, 'Booked'), h('dd', {}, s.activeCount)),
         h('div', {}, h('dt', {}, 'Remaining'), h('dd', {}, s.remainingSeats))),
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'sm', disabled: full, onclick: () => pickSession(s.id) }, 'Book here'),
@@ -382,10 +398,10 @@ async function loadSessions(quiet) {
                       onclick: (ev) => race(s, ev.target) }, '⚡ Race ×10')),
     );
     wrap.append(card);
-    select.append(h('option', { value: s.id }, s.id + ' — ' + s.title + ' (' + s.remainingSeats + ' left)'));
+    select.append(h('option', { value: s.id }, s.title + ' (' + s.remainingSeats + ' left)'));
   }
   if (selected) select.value = selected;
-  $('sessions-updated').textContent = 'read ' + new Date().toLocaleTimeString();
+  $('sessions-updated').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   renderInvariants(data.sessions);
 }
 // Client-side consistency checks on what the server returned (they do not replace server-side tests).
@@ -412,11 +428,11 @@ async function loadReservations(quiet, flashId) {
   if (!res.ok) { show('Could not load reservations: ' + errText(data, res), false); return; }
   const tbody = $('res-body'); tbody.replaceChildren();
   const rows = data.reservations.slice().reverse();
-  $('res-count').textContent = rows.filter(r => r.status === 'active').length + ' active · ' + rows.length + ' total';
+  $('res-count').textContent = rows.filter(r => r.status === 'active').length + ' active';
   if (!rows.length) tbody.append(h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'No reservations yet.')));
   for (const r of rows) {
     const actions = h('div', { class: 'row-actions' },
-      h('button', { type: 'button', class: 'sm', title: 'Re-send the original request (same key)',
+      h('button', { type: 'button', class: 'sm tech-only', title: 'Re-send the original request (same key)',
                     'aria-label': 'Replay original request for ' + r.attendeeAlias, onclick: () => replay(r) }, '↺ Replay'),
       r.status === 'active'
         ? h('button', { type: 'button', class: 'sm danger', 'aria-label': 'Cancel reservation for ' + r.attendeeAlias + ' in ' + r.sessionId,
@@ -424,10 +440,10 @@ async function loadReservations(quiet, flashId) {
         : null);
     const isNew = (flashId && r.id === flashId) || (lastIds.size && !lastIds.has(r.id));
     tbody.append(h('tr', { class: isNew ? 'flash' : '' },
-      h('td', { class: 'rid', title: r.id }, r.id.length > 16 ? r.id.slice(0, 16) + '…' : r.id),
-      h('td', { class: 'mono' }, r.sessionId),
+      h('td', { class: 'rid tech-only', title: r.id }, r.id.length > 16 ? r.id.slice(0, 16) + '…' : r.id),
+      h('td', { title: r.sessionId }, titleOf(r.sessionId)),
       h('td', {}, r.attendeeAlias),
-      h('td', { class: 'mono' }, r.requestKey),
+      h('td', { class: 'mono tech-only' }, r.requestKey),
       h('td', {}, h('span', { class: 'badge ' + r.status }, r.status)),
       h('td', {}, actions)));
   }
@@ -437,8 +453,9 @@ async function refresh(flashId) { await Promise.all([loadSessions(true), loadRes
 
 async function cancel(r) {
   const { res, data } = await api('POST', '/reservations/' + encodeURIComponent(r.id) + '/cancel', {});
-  if (res.ok) show('Server confirmed: ' + data.id + ' is now ' + data.status + '. One seat released in ' + data.sessionId + '.', true);
-  else show('Cancel rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
+  if (res.ok) show('Reservation for ' + data.attendeeAlias + ' cancelled. One seat released in ' + titleOf(data.sessionId) + '.' +
+                   (tech() ? ' [HTTP ' + res.status + ', ' + data.id + ', status ' + data.status + ']' : ''), true);
+  else show('Could not cancel: ' + errText(data, res) + (tech() ? ' [HTTP ' + res.status + ']' : ''), false);
   await refresh(r.id);
 }
 async function replay(r) {
@@ -483,7 +500,7 @@ async function race(s, btn) {
 $('reserve-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const alias = $('alias').value, key = $('key').value;
-  if (!alias.trim()) { show('Attendee alias must not be blank.', false); $('alias').focus(); return; }
+  if (!alias.trim()) { show('Please enter the attendee name.', false); $('alias').focus(); return; }
   if (!key) { show('Request key is required.', false); $('key').focus(); return; }
   $('reserve-btn').disabled = true;
   let flash;
@@ -491,11 +508,13 @@ $('reserve-form').addEventListener('submit', async (ev) => {
     const { res, data } = await api('POST', '/reservations', { sessionId: $('session').value, attendeeAlias: alias, requestKey: key });
     if (res.ok) {
       flash = data.id;
-      const replayNote = res.status === 200 ? ' (HTTP 200: replay of an existing request, no new seat)' : ' (HTTP 201: new seat)';
-      show('Server confirmed ' + data.id + ' for ' + data.attendeeAlias + ' in ' + data.sessionId + ', status ' + data.status + replayNote + '.', true);
+      const plain = res.status === 200
+        ? 'This request was already processed. ' + data.attendeeAlias + ' has a ' + data.status + ' reservation in ' + titleOf(data.sessionId) + '; no new seat was used.'
+        : 'Seat reserved for ' + data.attendeeAlias + ' in ' + titleOf(data.sessionId) + '.';
+      show(plain + (tech() ? ' [HTTP ' + res.status + ', ' + data.id + ', status ' + data.status + ']' : ''), true);
       $('alias').value = ''; $('key').value = newKey();
     } else {
-      show('Rejected (HTTP ' + res.status + ') ' + errText(data, res), false);
+      show('Could not reserve: ' + errText(data, res) + (tech() ? ' [HTTP ' + res.status + ']' : ''), false);
     }
   } catch (e) {
     show('Network error: ' + e.message, false);
@@ -534,6 +553,10 @@ function applyLook(theme, accent) {
 })();
 $('theme').addEventListener('change', () => applyLook($('theme').value, $('accent').value));
 $('accent').addEventListener('change', () => applyLook($('theme').value, $('accent').value));
+$('tech-mode').addEventListener('change', (ev) => {
+  document.body.classList.toggle('tech', ev.target.checked);
+  if (!ev.target.checked) { $('demo-mode').checked = false; document.body.classList.remove('demo'); }
+});
 $('demo-mode').addEventListener('change', (ev) => document.body.classList.toggle('demo', ev.target.checked));
 $('key').value = newKey();
 pollHealth(); setInterval(pollHealth, 5000);
