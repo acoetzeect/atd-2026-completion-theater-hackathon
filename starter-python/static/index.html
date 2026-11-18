@@ -467,10 +467,13 @@ async function replay(r) {
   if (res.ok) {
     const same = data.id === r.id;
     const seatsSame = before && after && before.activeCount === after.activeCount;
-    show('Replay → HTTP ' + res.status + ', ' + (same ? 'same ID ' : 'DIFFERENT ID ') + data.id + ', status ' + data.status +
-         '. Active seats ' + (before ? before.activeCount : '?') + ' → ' + (after ? after.activeCount : '?') +
-         (same && seatsSame ? ' ✓ idempotent, no seat consumed.' : ' ✗ unexpected!'), same && seatsSame);
-  } else show('Replay rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
+    const okReplay = same && seatsSame;
+    show((okReplay
+          ? 'Request sent again. ' + data.attendeeAlias + "'s reservation came back unchanged (" + data.status + '). No extra seat was used.'
+          : 'Request sent again, but the result was unexpected. Check the HTTP activity log.') +
+         ' [HTTP ' + res.status + ', ' + data.id + ', active seats ' + (before ? before.activeCount : '?') + ' → ' + (after ? after.activeCount : '?') + ']',
+         okReplay);
+  } else show('Request sent again and rejected: ' + errText(data, res) + ' [HTTP ' + res.status + ']', false);
 }
 
 /* ---------- race demo ---------- */
@@ -556,6 +559,7 @@ $('theme').addEventListener('change', () => applyLook($('theme').value, $('accen
 $('accent').addEventListener('change', () => applyLook($('theme').value, $('accent').value));
 $('tech-mode').addEventListener('change', (ev) => {
   document.body.classList.toggle('tech', ev.target.checked);
+  statusEl.textContent = ''; statusEl.className = 'status';
   if (!ev.target.checked) { $('demo-mode').checked = false; document.body.classList.remove('demo'); }
 });
 $('demo-mode').addEventListener('change', (ev) => document.body.classList.toggle('demo', ev.target.checked));
