@@ -1,6 +1,6 @@
 # Session Seat Desk — team handoff README
 
-**Team ID and aliases:** team-annelie (alias: Annelie)
+**Team ID and aliases:** team-annie (alias: Annie)
 
 **Runtime and version:** Python 3.11+ (built and tested with CPython 3.12.16 on macOS). Standard library only, including `sqlite3`. Use the same interpreter for every command. On macOS the system `python3` may be 3.9; select a 3.11+ executable explicitly (for example `/opt/homebrew/bin/python3.12`).
 
@@ -66,7 +66,7 @@ Errors use `{"error":{"code":"…","message":"…"}}`. Aliases are trimmed befor
 
 ## Handoff
 
-**Fork / branch:** https://github.com/acoetzeect/atd-2026-completion-theater-hackathon — `submission/team-annelie`
+**Fork / branch:** https://github.com/acoetzeect/atd-2026-completion-theater-hackathon — `submission/team-annie`
 
 **Declared app directory:** `starter-python/` (this README, `app.py`, `static/index.html`, `sessions.json`, `adapter.json`, `test_app.py`).
 
