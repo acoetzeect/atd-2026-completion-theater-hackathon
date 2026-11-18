@@ -5,191 +5,442 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Session Seat Desk</title>
 <style>
-  :root { --ink:#101760; --bg:#fff; --muted:#555; --ok:#0a6b2d; --err:#a40000; --line:#cfd5e3; }
-  body { font: 1rem/1.5 system-ui, sans-serif; max-width: 56rem; margin: 2rem auto; padding: 0 1rem; color: #111; background: var(--bg); }
-  h1, h2 { color: var(--ink); }
-  table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
-  th, td { border: 1px solid var(--line); padding: .4rem .6rem; text-align: left; }
-  th { background: #eef1f6; }
-  form { display: grid; gap: .6rem; max-width: 28rem; }
-  label { font-weight: 600; }
-  input, select, button { font: inherit; padding: .4rem; }
-  button { cursor: pointer; }
-  :focus-visible { outline: 3px solid #f0a000; outline-offset: 2px; }
-  .status { padding: .6rem; border-radius: 4px; margin: .6rem 0; min-height: 1.5rem; }
-  .status.ok { background: #e6f4ea; color: var(--ok); }
-  .status.err { background: #fde8e8; color: var(--err); }
-  .hint { color: var(--muted); font-size: .9rem; }
-  .full { color: var(--err); font-weight: 600; }
+  :root {
+    --bg:#0b0e14; --panel:#121722; --panel-2:#171d2b; --line:#232b3d; --ink:#e6e9f0; --muted:#8b93a7;
+    --accent:#7c9cff; --accent-2:#5eead4; --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f7fb; --panel:#ffffff; --panel-2:#f0f3f9; --line:#dde3ee; --ink:#121826; --muted:#5b6478;
+            --accent:#3b5bdb; --accent-2:#0f9488; --ok:#0f8a5f; --warn:#b7791f; --err:#c53030; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 var(--sans); }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; border-radius: 4px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--panel-2); color: var(--ink); padding: .45rem .8rem; transition: border-color .15s, transform .05s; }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: progress; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.danger { color: var(--err); }
+  button.ghost { background: transparent; }
+  button.sm { padding: .2rem .55rem; font-size: .82rem; }
+
+  header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem;
+           padding: 1.1rem 1.5rem; border-bottom:1px solid var(--line); background: var(--panel); }
+  .brand { display:flex; align-items:center; gap:.8rem; }
+  .logo { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-weight:800;
+          background: linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; }
+  h1 { font-size:1.15rem; margin:0; letter-spacing:-.01em; }
+  .tag { color:var(--muted); font-size:.85rem; }
+  .pill { display:inline-flex; align-items:center; gap:.45rem; padding:.3rem .7rem; border-radius:999px;
+          border:1px solid var(--line); font-size:.8rem; color:var(--muted); background: var(--panel-2); max-width: 100%; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex: none; }
+  .dot.live { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
+  .dot.down { background: var(--err); }
+  @keyframes pulse { 0% { box-shadow:0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent);} 70% { box-shadow:0 0 0 8px transparent;} 100% { box-shadow:0 0 0 0 transparent;} }
+
+  main { display:grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap:1.25rem; padding:1.25rem 1.5rem; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border:1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem; }
+  h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 .9rem; font-weight:600;
+       display:flex; justify-content:space-between; align-items:center; gap: .5rem; }
+  .stack { display:grid; gap:1.25rem; align-content: start; }
+
+  .sessions { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+  .card { background: var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:1rem; display:grid; gap:.8rem;
+          transition: border-color .2s; }
+  .card.selected { border-color: var(--accent); }
+  .card.full { border-color: color-mix(in srgb, var(--err) 50%, var(--line)); }
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+  .sid { font-family: var(--mono); font-size:.78rem; color: var(--accent-2); }
+  .title { font-weight:600; font-size:1.02rem; }
+  .badge { font-family: var(--mono); font-size:.72rem; padding:.12rem .5rem; border-radius:999px; border:1px solid currentColor; white-space: nowrap; }
+  .badge.active, .badge.s2 { color: var(--ok); }
+  .badge.cancelled { color: var(--muted); }
+  .badge.full, .badge.s4 { color: var(--err); }
+  .badge.open { color: var(--accent-2); }
+  .badge.s5 { color: var(--warn); }
+  .seats { display:flex; gap:.5rem; flex-wrap: wrap; }
+  .seat { width:38px; height:38px; border-radius:9px; border:2px dashed var(--line); display:grid; place-items:center;
+          font-size:.7rem; color: var(--muted); transition: all .35s ease; }
+  .seat.taken { border-style: solid; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); }
+  .stats { display:grid; grid-template-columns: repeat(3, 1fr); gap:.4rem; margin:0; }
+  .stats div { background: var(--panel); border:1px solid var(--line); border-radius:8px; padding:.35rem .5rem; }
+  .stats dt { font-size:.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .stats dd { margin:0; font-family: var(--mono); font-size:1.1rem; font-weight:600; }
+  .card-actions { display:flex; gap:.5rem; flex-wrap: wrap; }
+
+  form.reserve { display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:.8rem; align-items:end; }
+  @media (max-width: 760px) { form.reserve { grid-template-columns: 1fr; } }
+  .field { display:grid; gap:.3rem; }
+  label { font-size:.8rem; font-weight:600; color: var(--muted); }
+  input, select { font: inherit; padding:.5rem .65rem; border-radius:8px; border:1px solid var(--line);
+                  background: var(--bg); color: var(--ink); width: 100%; }
+  input.mono { font-family: var(--mono); font-size: .85rem; }
+  .keyrow { display:flex; gap:.35rem; }
+  .hint { font-size:.75rem; color: var(--muted); }
+
+  .status { margin-top:.9rem; padding:.65rem .8rem; border-radius:10px; border:1px solid var(--line); font-size:.9rem; min-height: 2.6rem; }
+  .status:empty { display: none; }
+  .status.ok { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+  .status.err { border-color: color-mix(in srgb, var(--err) 50%, var(--line)); background: color-mix(in srgb, var(--err) 10%, transparent); }
+
+  table { width:100%; border-collapse: collapse; font-size:.88rem; }
+  th { text-align:left; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;
+       padding:.45rem .5rem; border-bottom:1px solid var(--line); }
+  td { padding:.5rem; border-bottom:1px solid var(--line); vertical-align: middle; }
+  tr.flash td { animation: flash 1.2s ease; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 25%, transparent); } to { background: transparent; } }
+  .rid { font-family: var(--mono); font-size:.78rem; }
+  .row-actions { display:flex; gap:.35rem; justify-content: flex-end; }
+  .empty { color: var(--muted); text-align: center; padding: 1.2rem; }
+  .table-wrap { overflow-x: auto; }
+
+  .receipts { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); display:flex; flex-direction: column; }
+  .log { overflow:auto; display:grid; gap:.45rem; align-content:start; flex: 1; }
+  .rcpt { border:1px solid var(--line); border-radius:9px; background: var(--panel-2); animation: slide .25s ease; }
+  @keyframes slide { from { opacity:0; transform: translateY(-4px); } to { opacity:1; transform:none; } }
+  .rcpt summary { display:flex; align-items:center; gap:.5rem; padding:.45rem .6rem; cursor:pointer; font-family: var(--mono); font-size:.78rem; list-style: none; }
+  .rcpt summary::-webkit-details-marker { display:none; }
+  .rcpt .m { font-weight:700; color: var(--accent); width: 2.6rem; }
+  .rcpt .p { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rcpt .t { color: var(--muted); }
+  .rcpt pre { margin:0; padding:.6rem; border-top:1px solid var(--line); font-size:.74rem; white-space:pre-wrap; word-break: break-all; max-height: 240px; overflow:auto; }
+  .rcpt .rbar { display:flex; justify-content:flex-end; gap:.35rem; padding:.35rem .6rem; border-top:1px solid var(--line); }
+  .race-out { font-family: var(--mono); font-size:.8rem; color: var(--muted); }
+  .lookup { display:flex; gap:.5rem; align-items: end; }
+  .lookup .field { flex: 1; }
+  .full-row { grid-column: 1 / -1; }
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true">SD</div>
+    <div>
+      <h1>Session Seat Desk</h1>
+      <div class="tag">Every number on this page is read back from the server. Every call leaves a receipt.</div>
+    </div>
+  </div>
+  <div class="pill" id="health" title="Server health"><span class="dot" id="health-dot"></span><span id="health-text">connecting…</span></div>
+</header>
+
 <main>
-  <h1>Session Seat Desk</h1>
-  <p class="hint">All data shown here is read from the local API (<code>GET /sessions</code>, <code>GET /reservations</code>). Use fictional aliases only.</p>
+  <div class="stack">
+    <section class="panel" aria-labelledby="sessions-h">
+      <h2 id="sessions-h"><span>Sessions</span>
+        <span><span class="tag" id="sessions-updated"></span> <button type="button" class="sm ghost" id="refresh">↻ Refresh from server</button></span></h2>
+      <div class="sessions" id="sessions"></div>
+    </section>
 
-  <section aria-labelledby="sessions-h">
-    <h2 id="sessions-h">Sessions</h2>
-    <table>
-      <caption class="hint" id="sessions-updated">Loading…</caption>
-      <thead><tr><th scope="col">ID</th><th scope="col">Title</th><th scope="col">Capacity</th><th scope="col">Active</th><th scope="col">Remaining seats</th></tr></thead>
-      <tbody id="sessions-body"></tbody>
-    </table>
-    <button type="button" id="refresh">Refresh from server</button>
-  </section>
+    <section class="panel" aria-labelledby="reserve-h">
+      <h2 id="reserve-h">Reserve a seat</h2>
+      <form class="reserve" id="reserve-form" novalidate>
+        <div class="field">
+          <label for="session">Session</label>
+          <select id="session" name="sessionId" required></select>
+        </div>
+        <div class="field">
+          <label for="alias">Attendee alias</label>
+          <input id="alias" name="attendeeAlias" autocomplete="off" required placeholder="e.g. Ada" aria-describedby="alias-hint">
+        </div>
+        <div class="field">
+          <label for="key">Request key</label>
+          <div class="keyrow">
+            <input id="key" class="mono" name="requestKey" autocomplete="off" required aria-describedby="key-hint">
+            <button type="button" class="sm" id="new-key" title="Generate a new request key" aria-label="Generate a new request key">⟳</button>
+          </div>
+        </div>
+        <button type="submit" class="primary" id="reserve-btn">Reserve</button>
+        <div class="hint full-row"><span id="alias-hint">Fictional aliases only; surrounding spaces are trimmed.</span>
+          <span id="key-hint">Same key = same reservation (idempotent). A fresh key is generated after each confirmed booking.</span></div>
+      </form>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
 
-  <section aria-labelledby="reserve-h">
-    <h2 id="reserve-h">Reserve a seat</h2>
-    <form id="reserve-form" novalidate>
-      <label for="session">Session</label>
-      <select id="session" name="sessionId" required></select>
+    <section class="panel" aria-labelledby="res-h">
+      <h2 id="res-h"><span>Reservations</span><span class="tag" id="res-count"></span></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Reservation ID</th><th scope="col">Session</th><th scope="col">Alias</th><th scope="col">Request key</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="res-body"></tbody>
+        </table>
+      </div>
+    </section>
 
-      <label for="alias">Attendee alias</label>
-      <input id="alias" name="attendeeAlias" autocomplete="off" required aria-describedby="alias-hint">
-      <span id="alias-hint" class="hint">Fictional alias, e.g. Ada. Leading/trailing spaces are trimmed.</span>
+    <section class="panel" aria-labelledby="lookup-h">
+      <h2 id="lookup-h">Independent readback</h2>
+      <form class="lookup" id="lookup-form" novalidate>
+        <div class="field">
+          <label for="lookup-id">Reservation ID</label>
+          <input id="lookup-id" class="mono" autocomplete="off" required placeholder="res-…">
+        </div>
+        <button type="submit">GET /reservations/{id}</button>
+      </form>
+      <div class="hint" style="margin-top:.5rem">The result appears as a receipt on the right.</div>
+    </section>
+  </div>
 
-      <label for="key">Request key</label>
-      <input id="key" name="requestKey" autocomplete="off" required aria-describedby="key-hint">
-      <span id="key-hint" class="hint">Re-sending the same key returns the original reservation. A new key is generated after each confirmed booking.</span>
-
-      <button type="submit" id="reserve-btn">Reserve</button>
-    </form>
-  </section>
-
-  <div id="status" class="status" role="status" aria-live="polite"></div>
-
-  <section aria-labelledby="res-h">
-    <h2 id="res-h">Reservations</h2>
-    <table>
-      <thead><tr><th scope="col">Reservation ID</th><th scope="col">Session</th><th scope="col">Alias</th><th scope="col">Request key</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
-      <tbody id="res-body"></tbody>
-    </table>
-  </section>
-
-  <section aria-labelledby="lookup-h">
-    <h2 id="lookup-h">Look up a reservation</h2>
-    <form id="lookup-form" novalidate>
-      <label for="lookup-id">Reservation ID</label>
-      <input id="lookup-id" autocomplete="off" required>
-      <button type="submit">Look up</button>
-    </form>
-    <pre id="lookup-out" aria-live="polite"></pre>
-  </section>
+  <aside class="panel receipts" aria-labelledby="rcpt-h">
+    <h2 id="rcpt-h"><span>Receipts <span class="tag" id="rcpt-count"></span></span><button type="button" class="sm ghost" id="clear-log">Clear</button></h2>
+    <div class="log" id="log" aria-live="off"></div>
+  </aside>
 </main>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const statusEl = $('status');
+let sessionsCache = [];
+let receiptN = 0;
 
-function newKey() {
-  if (window.crypto && crypto.randomUUID) return 'ui-' + crypto.randomUUID();
-  return 'ui-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-}
-function show(msg, ok) {
-  statusEl.textContent = msg;
-  statusEl.className = 'status ' + (ok ? 'ok' : 'err');
-}
-function errText(body, res) {
-  if (body && body.error) {
-    return typeof body.error === 'string' ? body.error : (body.error.message || body.error.code);
+/* ---------- tiny DOM helper (textContent only; no HTML injection) ---------- */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
   }
+  for (const kid of kids.flat()) if (kid != null) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+function newKey() {
+  if (window.crypto && crypto.randomUUID) return 'ui-' + crypto.randomUUID().slice(0, 13);
+  return 'ui-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function show(msg, ok) { statusEl.textContent = msg; statusEl.className = 'status ' + (ok ? 'ok' : 'err'); }
+function errText(body, res) {
+  if (body && body.error) return typeof body.error === 'string' ? body.error : (body.error.code + ': ' + body.error.message);
   return 'HTTP ' + res.status;
 }
-async function api(method, path, body) {
-  const opts = { method, headers: {} };
-  if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const res = await fetch(path, opts);
-  let data = null;
-  try { data = await res.json(); } catch (e) { data = null; }
+
+/* ---------- API with receipts ---------- */
+async function api(method, path, body, opts = {}) {
+  const init = { method, headers: {} };
+  if (body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+  const t0 = performance.now();
+  let res, data = null, text = '';
+  try {
+    res = await fetch(path, init);
+    text = await res.text();
+    try { data = JSON.parse(text); } catch (e) { data = null; }
+  } catch (e) {
+    setHealth(false);
+    if (!opts.quiet) addReceipt(method, path, body, null, String(e), performance.now() - t0);
+    throw e;
+  }
+  if (!opts.quiet) addReceipt(method, path, body, res.status, data !== null ? data : text, performance.now() - t0);
   return { res, data };
 }
-function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+function curlFor(method, path, body) {
+  let c = 'curl -s -X ' + method + " 'http://" + location.host + path + "'";
+  if (body !== undefined) c += " -H 'Content-Type: application/json' -d '" + JSON.stringify(body).replace(/'/g, "'\\''") + "'";
+  return c;
+}
+function addReceipt(method, path, reqBody, status, respBody, ms) {
+  receiptN++;
+  const cls = status == null ? 's5' : 's' + String(status)[0];
+  const lines = [];
+  if (reqBody !== undefined) lines.push('→ ' + JSON.stringify(reqBody));
+  lines.push('← ' + (status == null ? 'network error' : 'HTTP ' + status));
+  lines.push(typeof respBody === 'string' ? respBody : JSON.stringify(respBody, null, 2));
+  const curl = curlFor(method, path, reqBody);
+  const copyBtn = h('button', { type: 'button', class: 'sm ghost', onclick: async (ev) => {
+      try { await navigator.clipboard.writeText(curl); ev.target.textContent = 'copied ✓'; }
+      catch (e) { ev.target.textContent = 'copy failed'; }
+      setTimeout(() => (ev.target.textContent = 'copy as curl'), 1400);
+    } }, 'copy as curl');
+  const el = h('details', { class: 'rcpt' },
+    h('summary', {},
+      h('span', { class: 'm' }, method),
+      h('span', { class: 'p', title: path }, path),
+      h('span', { class: 'badge ' + cls }, status == null ? 'ERR' : status),
+      h('span', { class: 't' }, Math.round(ms) + 'ms')),
+    h('pre', {}, lines.join('\n')),
+    h('div', { class: 'rbar' }, copyBtn));
+  const log = $('log');
+  log.prepend(el);
+  while (log.children.length > 80) log.lastChild.remove();
+  $('rcpt-count').textContent = '· ' + receiptN;
+}
+$('clear-log').addEventListener('click', () => { $('log').replaceChildren(); receiptN = 0; $('rcpt-count').textContent = ''; });
 
-async function loadSessions() {
-  const { res, data } = await api('GET', '/sessions');
-  if (!res.ok) { show('Could not load sessions: ' + errText(data, res), false); return; }
-  const tbody = $('sessions-body'); tbody.replaceChildren();
-  const select = $('session'); const prev = select.value; select.replaceChildren();
-  for (const s of data.sessions) {
-    const tr = document.createElement('tr');
-    tr.dataset.sessionId = s.id;
-    tr.append(cell(s.id), cell(s.title), cell(s.capacity), cell(s.activeCount));
-    const rem = cell(s.remainingSeats);
-    if (s.remainingSeats === 0) { rem.textContent = '0 (full)'; rem.className = 'full'; }
-    tr.append(rem); tbody.append(tr);
-    const opt = document.createElement('option');
-    opt.value = s.id; opt.textContent = s.id + ' — ' + s.title + ' (' + s.remainingSeats + ' left)';
-    select.append(opt);
-  }
-  if (prev) select.value = prev;
-  $('sessions-updated').textContent = 'Read from server at ' + new Date().toLocaleTimeString();
+/* ---------- health ---------- */
+function setHealth(ok, text) {
+  $('health-dot').className = 'dot ' + (ok ? 'live' : 'down');
+  $('health-text').textContent = text || (ok ? 'server live' : 'server unreachable');
+}
+async function pollHealth() {
+  try {
+    const res = await fetch('/health', { cache: 'no-store' });
+    const d = await res.json();
+    setHealth(res.ok, 'live · SQLite ' + (d.stateFile || '').split(/[\\/]/).slice(-2).join('/'));
+  } catch (e) { setHealth(false); }
 }
 
-async function loadReservations() {
-  const { res, data } = await api('GET', '/reservations');
+/* ---------- sessions ---------- */
+async function loadSessions(quiet) {
+  const { res, data } = await api('GET', '/sessions', undefined, { quiet });
+  if (!res.ok) { show('Could not load sessions: ' + errText(data, res), false); return; }
+  sessionsCache = data.sessions;
+  const selected = $('session').value;
+  const wrap = $('sessions'); wrap.replaceChildren();
+  const select = $('session'); select.replaceChildren();
+  for (const s of data.sessions) {
+    const full = s.remainingSeats <= 0;
+    const seats = [];
+    for (let i = 0; i < s.capacity; i++) {
+      const taken = i < s.activeCount;
+      seats.push(h('div', { class: 'seat' + (taken ? ' taken' : ''), 'aria-hidden': 'true' }, taken ? '●' : i + 1));
+    }
+    const card = h('article', { class: 'card' + (full ? ' full' : '') + (s.id === selected ? ' selected' : ''), 'data-session-id': s.id, 'aria-label': s.title },
+      h('div', { class: 'card-top' },
+        h('div', {}, h('div', { class: 'sid' }, s.id), h('div', { class: 'title' }, s.title)),
+        h('span', { class: 'badge ' + (full ? 'full' : 'open') }, full ? 'FULL' : 'OPEN')),
+      h('div', { class: 'seats', role: 'img', 'aria-label': s.activeCount + ' of ' + s.capacity + ' seats taken' }, seats),
+      h('dl', { class: 'stats' },
+        h('div', {}, h('dt', {}, 'Capacity'), h('dd', {}, s.capacity)),
+        h('div', {}, h('dt', {}, 'Active'), h('dd', {}, s.activeCount)),
+        h('div', {}, h('dt', {}, 'Remaining'), h('dd', {}, s.remainingSeats))),
+      h('div', { class: 'card-actions' },
+        h('button', { type: 'button', class: 'sm', disabled: full, onclick: () => pickSession(s.id) }, 'Book here'),
+        h('button', { type: 'button', class: 'sm', title: 'Fire 10 simultaneous distinct bookings and verify capacity holds',
+                      onclick: (ev) => race(s, ev.target) }, '⚡ Race ×10')),
+    );
+    wrap.append(card);
+    select.append(h('option', { value: s.id }, s.id + ' — ' + s.title + ' (' + s.remainingSeats + ' left)'));
+  }
+  if (selected) select.value = selected;
+  $('sessions-updated').textContent = 'read ' + new Date().toLocaleTimeString();
+}
+function pickSession(id) {
+  $('session').value = id;
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('selected', c.dataset.sessionId === id));
+  $('alias').focus();
+}
+$('session').addEventListener('change', () => pickSession($('session').value));
+
+/* ---------- reservations ---------- */
+let lastIds = new Set();
+async function loadReservations(quiet, flashId) {
+  const { res, data } = await api('GET', '/reservations', undefined, { quiet });
   if (!res.ok) { show('Could not load reservations: ' + errText(data, res), false); return; }
   const tbody = $('res-body'); tbody.replaceChildren();
-  if (!data.reservations.length) {
-    const tr = document.createElement('tr'); const td = cell('No reservations yet.'); td.colSpan = 6; tr.append(td); tbody.append(tr);
+  const rows = data.reservations.slice().reverse();
+  $('res-count').textContent = rows.filter(r => r.status === 'active').length + ' active · ' + rows.length + ' total';
+  if (!rows.length) tbody.append(h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'No reservations yet. Book a seat or hit ⚡ Race.')));
+  for (const r of rows) {
+    const actions = h('div', { class: 'row-actions' },
+      h('button', { type: 'button', class: 'sm', title: 'Re-send the original request (same key)',
+                    'aria-label': 'Replay original request for ' + r.attendeeAlias, onclick: () => replay(r) }, '↺ Replay'),
+      r.status === 'active'
+        ? h('button', { type: 'button', class: 'sm danger', 'aria-label': 'Cancel reservation for ' + r.attendeeAlias + ' in ' + r.sessionId,
+                        onclick: () => cancel(r) }, 'Cancel')
+        : null);
+    const isNew = (flashId && r.id === flashId) || (lastIds.size && !lastIds.has(r.id));
+    tbody.append(h('tr', { class: isNew ? 'flash' : '' },
+      h('td', { class: 'rid', title: r.id }, r.id.length > 16 ? r.id.slice(0, 16) + '…' : r.id),
+      h('td', { class: 'mono' }, r.sessionId),
+      h('td', {}, r.attendeeAlias),
+      h('td', { class: 'mono' }, r.requestKey),
+      h('td', {}, h('span', { class: 'badge ' + r.status }, r.status)),
+      h('td', {}, actions)));
   }
-  for (const r of data.reservations) {
-    const tr = document.createElement('tr');
-    tr.append(cell(r.id), cell(r.sessionId), cell(r.attendeeAlias), cell(r.requestKey), cell(r.status));
-    const td = document.createElement('td');
-    if (r.status === 'active') {
-      const b = document.createElement('button');
-      b.type = 'button'; b.textContent = 'Cancel';
-      b.setAttribute('aria-label', 'Cancel reservation for ' + r.attendeeAlias + ' in ' + r.sessionId);
-      b.addEventListener('click', () => cancel(r.id));
-      td.append(b);
-    } else { td.textContent = '—'; }
-    tr.append(td); tbody.append(tr);
-  }
+  lastIds = new Set(rows.map(r => r.id));
+}
+async function refresh(flashId) { await Promise.all([loadSessions(true), loadReservations(true, flashId)]); }
+
+async function cancel(r) {
+  const { res, data } = await api('POST', '/reservations/' + encodeURIComponent(r.id) + '/cancel', {});
+  if (res.ok) show('Server confirmed: ' + data.id + ' is now ' + data.status + '. One seat released in ' + data.sessionId + '.', true);
+  else show('Cancel rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
+  await refresh(r.id);
+}
+async function replay(r) {
+  const before = sessionsCache.find(s => s.id === r.sessionId);
+  const { res, data } = await api('POST', '/reservations', { sessionId: r.sessionId, attendeeAlias: r.attendeeAlias, requestKey: r.requestKey });
+  await refresh(r.id);
+  const after = sessionsCache.find(s => s.id === r.sessionId);
+  if (res.ok) {
+    const same = data.id === r.id;
+    const seatsSame = before && after && before.activeCount === after.activeCount;
+    show('Replay → HTTP ' + res.status + ', ' + (same ? 'same ID ' : 'DIFFERENT ID ') + data.id + ', status ' + data.status +
+         '. Active seats ' + (before ? before.activeCount : '?') + ' → ' + (after ? after.activeCount : '?') +
+         (same && seatsSame ? ' ✓ idempotent, no seat consumed.' : ' ✗ unexpected!'), same && seatsSame);
+  } else show('Replay rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
 }
 
-async function refresh() { await Promise.all([loadSessions(), loadReservations()]); }
-
-async function cancel(id) {
-  const { res, data } = await api('POST', '/reservations/' + encodeURIComponent(id) + '/cancel', {});
-  if (res.ok) show('Cancelled reservation ' + data.id + ' (status: ' + data.status + ').', true);
-  else show('Cancel failed: ' + errText(data, res), false);
+/* ---------- race demo ---------- */
+async function race(s, btn) {
+  btn.disabled = true;
+  const stamp = Date.now().toString(36);
+  const before = sessionsCache.find(x => x.id === s.id);
+  show('Firing 10 concurrent bookings at ' + s.id + '…', true);
+  const attempts = Array.from({ length: 10 }, (_, i) =>
+    api('POST', '/reservations', { sessionId: s.id, attendeeAlias: 'Racer-' + (i + 1), requestKey: 'race-' + stamp + '-' + i })
+      .then(r => r.res.status).catch(() => 'ERR'));
+  const statuses = await Promise.all(attempts);
   await refresh();
+  const after = sessionsCache.find(x => x.id === s.id);
+  const tally = {};
+  statuses.forEach(st => (tally[st] = (tally[st] || 0) + 1));
+  const ok = statuses.filter(st => st === 201).length;
+  const expected = Math.max(0, before.remainingSeats);
+  const holds = after.activeCount <= after.capacity && ok === Math.min(10, expected) && after.activeCount === before.activeCount + ok;
+  const summary = Object.entries(tally).map(([k, v]) => v + '×' + k).join(', ');
+  show('Race on ' + s.id + ': ' + summary + '. Expected ' + Math.min(10, expected) + ' success(es); got ' + ok + '. Active ' + before.activeCount + '→' + after.activeCount + '/' + after.capacity + '. ' +
+       (holds ? 'Capacity invariant held.' : 'INVARIANT BROKEN — check receipts.'), holds);
+  btn.disabled = false;
 }
 
+/* ---------- reserve form ---------- */
 $('reserve-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const alias = $('alias').value;
-  const key = $('key').value;
+  const alias = $('alias').value, key = $('key').value;
   if (!alias.trim()) { show('Attendee alias must not be blank.', false); $('alias').focus(); return; }
   if (!key) { show('Request key is required.', false); $('key').focus(); return; }
   $('reserve-btn').disabled = true;
+  let flash;
   try {
     const { res, data } = await api('POST', '/reservations', { sessionId: $('session').value, attendeeAlias: alias, requestKey: key });
     if (res.ok) {
-      const replay = res.status === 200 ? ' (replay of an existing request)' : '';
-      show('Server confirmed reservation ' + data.id + ' for ' + data.attendeeAlias + ' in ' + data.sessionId + ', status ' + data.status + replay + '.', true);
+      flash = data.id;
+      const replayNote = res.status === 200 ? ' (HTTP 200: replay of an existing request, no new seat)' : ' (HTTP 201: new seat)';
+      show('Server confirmed ' + data.id + ' for ' + data.attendeeAlias + ' in ' + data.sessionId + ', status ' + data.status + replayNote + '.', true);
       $('alias').value = ''; $('key').value = newKey();
     } else {
-      show('Reservation rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
+      show('Rejected (HTTP ' + res.status + ') ' + errText(data, res), false);
     }
   } catch (e) {
     show('Network error: ' + e.message, false);
   } finally {
     $('reserve-btn').disabled = false;
-    await refresh();
+    await refresh(flash);
   }
 });
+$('new-key').addEventListener('click', () => { $('key').value = newKey(); $('key').focus(); });
 
 $('lookup-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const id = $('lookup-id').value.trim();
-  if (!id) { $('lookup-out').textContent = 'Enter a reservation ID.'; return; }
+  if (!id) { show('Enter a reservation ID to look up.', false); return; }
   const { res, data } = await api('GET', '/reservations/' + encodeURIComponent(id));
-  $('lookup-out').textContent = 'HTTP ' + res.status + '\n' + JSON.stringify(data, null, 2);
+  if (res.ok) show('Readback: ' + data.id + ' · ' + data.sessionId + ' · ' + data.attendeeAlias + ' · ' + data.status, true);
+  else show('Lookup failed (HTTP ' + res.status + '): ' + errText(data, res), false);
 });
 
-$('refresh').addEventListener('click', refresh);
+$('refresh').addEventListener('click', async () => {
+  await Promise.all([loadSessions(false), loadReservations(false)]);
+});
 $('key').value = newKey();
-refresh();
+pollHealth(); setInterval(pollHealth, 5000);
+Promise.all([loadSessions(false), loadReservations(false)]);
 </script>
 </body>
 </html>
