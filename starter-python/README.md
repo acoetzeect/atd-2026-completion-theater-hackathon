@@ -10,7 +10,7 @@
 
 ## Run
 
-From this directory (`starter-python/`):
+Run every command from **this app directory** (in the repository it is `starter-python/`; in an extracted snapshot it is whatever directory you extracted to). In all commands below, `python3` means **a Python 3.11+ interpreter**. Check it with `python3 --version`. If it reports an older version (macOS ships 3.9), use an explicit executable such as `python3.12` or `/opt/homebrew/bin/python3.12` (macOS), or `py -3.12` (Windows), and use the same one throughout.
 
 ```sh
 python3 app.py --reset     # explicit fresh fixture: seeds CT-101 (2) and CT-102 (3)
@@ -34,7 +34,7 @@ The tests start the real `app.py` as a child process on a free loopback port wit
 
 ## State
 
-SQLite file `DATA_DIR/seats.db` (default `starter-python/.state/seats.db`, WAL mode). Inspect it independently:
+SQLite file `DATA_DIR/seats.db` (default `.state/seats.db` inside this app directory, WAL mode). Inspect it independently:
 
 ```sh
 sqlite3 .state/seats.db "SELECT id, session_id, attendee_alias, request_key, status FROM reservations ORDER BY created_seq;"
@@ -62,7 +62,7 @@ Errors use `{"error":{"code":"…","message":"…"}}`. Aliases are trimmed befor
 
 ## UI
 
-`/` is one HTML page. It shows the sessions table, a reserve form (session, alias, request key), a reservations table with Cancel buttons and an ID lookup. All values shown come from API responses. A booking is reported as successful only after the server confirms it. Errors appear in a visible `role="status"` region. All controls have labels and work with the keyboard.
+`/` is one HTML page with no external resources. It shows the sessions table, a reserve form (session, alias, request key), a reservations table with Cancel buttons and an ID lookup. All values shown come from API responses. A **Receipts** panel logs every HTTP call (method, path, status, latency, raw request/response JSON, copy as curl). Each reservation has **↺ Replay**, which resends its original request and shows that the same ID returns and no seat is consumed. The **Demo tools** checkbox (off by default) reveals **⚡ Race ×10** on each session card. It fires 10 simultaneous real bookings (aliases `Racer-1…10`) at one session and reports whether capacity held. It writes to the store, so use it only on a demo fixture. A booking is reported as successful only after the server confirms it. Errors appear in a visible `role="status"` region. All controls have labels and work with the keyboard.
 
 ## Handoff
 
@@ -73,6 +73,13 @@ Errors use `{"error":{"code":"…","message":"…"}}`. Aliases are trimmed befor
 The frozen full commit, PR URL, snapshot sourceId and archive SHA-256 are recorded in the PR and the evidence manifest, not in this file.
 
 **Known gaps / not done:**
+- An AI audit on the earlier commit reported these low-severity behaviors. We kept them deliberately: they meet the contract, and changing them this close to the freeze adds risk.
+  - JSON is parsed with Python's `json`, so `NaN` and duplicate keys (last one wins) are accepted.
+  - There is no length limit on aliases.
+  - A whitespace-only request key (for example `"   "`) is accepted. Keys are compared exactly and are not trimmed.
+  - PUT/DELETE/PATCH return the standard library's 501 HTML page, not a JSON error. These methods are outside the contract.
+  - `Content-Length: -1` returns 413, not 400.
+  - Nothing prevents two processes from serving the same `DATA_DIR`. Capacity still held in that test because SQLite serializes writers.
 - The UI is not tested automatically. UI agreement (AC-02/03/07) needs a manual browser check.
 - The concurrency tests are bounded (10 parallel attempts, plus the shared verifier's 10×10). They do not prove the app is free of all races.
 - The unknown-session check runs after the request-key lookup. So reusing an existing key with an unknown session returns 409 conflict, not 404. In both cases nothing changes.

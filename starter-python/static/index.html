@@ -115,6 +115,11 @@
   .lookup { display:flex; gap:.5rem; align-items: end; }
   .lookup .field { flex: 1; }
   .full-row { grid-column: 1 / -1; }
+  .race-btn { display: none; }
+  body.demo .race-btn { display: inline-block; }
+  .demo-toggle { display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; color: var(--muted); }
+  .demo-toggle input { width:auto; }
+  .header-right { display:flex; gap:.8rem; align-items:center; flex-wrap: wrap; }
   .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -128,7 +133,10 @@
       <div class="tag">Every number on this page is read back from the server. Every call leaves a receipt.</div>
     </div>
   </div>
-  <div class="pill" id="health" title="Server health"><span class="dot" id="health-dot"></span><span id="health-text">connecting…</span></div>
+  <div class="header-right">
+    <label class="demo-toggle" for="demo-mode"><input type="checkbox" id="demo-mode"> Demo tools (writes test bookings)</label>
+    <div class="pill" id="health" title="Server health"><span class="dot" id="health-dot"></span><span id="health-text">connecting…</span></div>
+  </div>
 </header>
 
 <main>
@@ -310,7 +318,7 @@ async function loadSessions(quiet) {
         h('div', {}, h('dt', {}, 'Remaining'), h('dd', {}, s.remainingSeats))),
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'sm', disabled: full, onclick: () => pickSession(s.id) }, 'Book here'),
-        h('button', { type: 'button', class: 'sm', title: 'Fire 10 simultaneous distinct bookings and verify capacity holds',
+        h('button', { type: 'button', class: 'sm race-btn', title: 'Demo tool: fire 10 simultaneous distinct bookings (aliases Racer-1…10) and verify capacity holds',
                       onclick: (ev) => race(s, ev.target) }, '⚡ Race ×10')),
     );
     wrap.append(card);
@@ -334,7 +342,7 @@ async function loadReservations(quiet, flashId) {
   const tbody = $('res-body'); tbody.replaceChildren();
   const rows = data.reservations.slice().reverse();
   $('res-count').textContent = rows.filter(r => r.status === 'active').length + ' active · ' + rows.length + ' total';
-  if (!rows.length) tbody.append(h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'No reservations yet. Book a seat or hit ⚡ Race.')));
+  if (!rows.length) tbody.append(h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'No reservations yet.')));
   for (const r of rows) {
     const actions = h('div', { class: 'row-actions' },
       h('button', { type: 'button', class: 'sm', title: 'Re-send the original request (same key)',
@@ -378,6 +386,7 @@ async function replay(r) {
 
 /* ---------- race demo ---------- */
 async function race(s, btn) {
+  if (!document.body.classList.contains('demo')) return;
   btn.disabled = true;
   const stamp = Date.now().toString(36);
   const before = sessionsCache.find(x => x.id === s.id);
@@ -438,6 +447,7 @@ $('lookup-form').addEventListener('submit', async (ev) => {
 $('refresh').addEventListener('click', async () => {
   await Promise.all([loadSessions(false), loadReservations(false)]);
 });
+$('demo-mode').addEventListener('change', (ev) => document.body.classList.toggle('demo', ev.target.checked));
 $('key').value = newKey();
 pollHealth(); setInterval(pollHealth, 5000);
 Promise.all([loadSessions(false), loadReservations(false)]);

@@ -44,8 +44,10 @@ class AppProcess:
                        check=True, capture_output=True)
 
     def start(self):
+        # Server output goes to a file, not an unread pipe, so it can never block the server.
+        self.log = open(os.path.join(self.data_dir, 'server.log'), 'ab')
         self.proc = subprocess.Popen([sys.executable, 'app.py'], cwd=HERE, env=self.env(),
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                     stdout=self.log, stderr=subprocess.STDOUT)
         deadline = time.time() + 10
         while time.time() < deadline:
             try:
@@ -53,7 +55,7 @@ class AppProcess:
                 return
             except OSError:
                 if self.proc.poll() is not None:
-                    raise RuntimeError('app exited: %s' % self.proc.stderr.read().decode())
+                    raise RuntimeError('app exited with %s, see %s' % (self.proc.returncode, self.log.name))
                 time.sleep(0.05)
         raise RuntimeError('app did not start')
 
@@ -62,8 +64,7 @@ class AppProcess:
             self.proc.terminate()
             self.proc.wait(timeout=10)
         if self.proc:
-            self.proc.stdout.close()
-            self.proc.stderr.close()
+            self.log.close()
 
     def url(self, path):
         return 'http://127.0.0.1:%d%s' % (self.port, path)
