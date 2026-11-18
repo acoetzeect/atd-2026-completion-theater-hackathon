@@ -1,8 +1,195 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Session Seat Desk: starter scaffold</title>
-<style>body{font:1.1rem system-ui;max-width:48rem;margin:3rem auto;padding:0 1rem;line-height:1.6}code{background:#eef1f6;padding:.2rem}h1{color:#101760}</style>
-<main><h1>Session Seat Desk</h1><p><strong>Scaffold only. The reservation app is not implemented.</strong></p>
-<p>Your team will build session readback, booking, request replay, cancellation, durable state and the UI described in the PRD.</p>
-<p>Replace this page with a labelled, keyboard-usable interface that shows actual API state. Do not turn sample text into a success claim.</p>
-<p>The health endpoint confirms only that this server is listening. It does not establish any acceptance criterion.</p></main></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session Seat Desk</title>
+<style>
+  :root { --ink:#101760; --bg:#fff; --muted:#555; --ok:#0a6b2d; --err:#a40000; --line:#cfd5e3; }
+  body { font: 1rem/1.5 system-ui, sans-serif; max-width: 56rem; margin: 2rem auto; padding: 0 1rem; color: #111; background: var(--bg); }
+  h1, h2 { color: var(--ink); }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+  th, td { border: 1px solid var(--line); padding: .4rem .6rem; text-align: left; }
+  th { background: #eef1f6; }
+  form { display: grid; gap: .6rem; max-width: 28rem; }
+  label { font-weight: 600; }
+  input, select, button { font: inherit; padding: .4rem; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid #f0a000; outline-offset: 2px; }
+  .status { padding: .6rem; border-radius: 4px; margin: .6rem 0; min-height: 1.5rem; }
+  .status.ok { background: #e6f4ea; color: var(--ok); }
+  .status.err { background: #fde8e8; color: var(--err); }
+  .hint { color: var(--muted); font-size: .9rem; }
+  .full { color: var(--err); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Session Seat Desk</h1>
+  <p class="hint">All data shown here is read from the local API (<code>GET /sessions</code>, <code>GET /reservations</code>). Use fictional aliases only.</p>
+
+  <section aria-labelledby="sessions-h">
+    <h2 id="sessions-h">Sessions</h2>
+    <table>
+      <caption class="hint" id="sessions-updated">Loading…</caption>
+      <thead><tr><th scope="col">ID</th><th scope="col">Title</th><th scope="col">Capacity</th><th scope="col">Active</th><th scope="col">Remaining seats</th></tr></thead>
+      <tbody id="sessions-body"></tbody>
+    </table>
+    <button type="button" id="refresh">Refresh from server</button>
+  </section>
+
+  <section aria-labelledby="reserve-h">
+    <h2 id="reserve-h">Reserve a seat</h2>
+    <form id="reserve-form" novalidate>
+      <label for="session">Session</label>
+      <select id="session" name="sessionId" required></select>
+
+      <label for="alias">Attendee alias</label>
+      <input id="alias" name="attendeeAlias" autocomplete="off" required aria-describedby="alias-hint">
+      <span id="alias-hint" class="hint">Fictional alias, e.g. Ada. Leading/trailing spaces are trimmed.</span>
+
+      <label for="key">Request key</label>
+      <input id="key" name="requestKey" autocomplete="off" required aria-describedby="key-hint">
+      <span id="key-hint" class="hint">Re-sending the same key returns the original reservation. A new key is generated after each confirmed booking.</span>
+
+      <button type="submit" id="reserve-btn">Reserve</button>
+    </form>
+  </section>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <section aria-labelledby="res-h">
+    <h2 id="res-h">Reservations</h2>
+    <table>
+      <thead><tr><th scope="col">Reservation ID</th><th scope="col">Session</th><th scope="col">Alias</th><th scope="col">Request key</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+      <tbody id="res-body"></tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="lookup-h">
+    <h2 id="lookup-h">Look up a reservation</h2>
+    <form id="lookup-form" novalidate>
+      <label for="lookup-id">Reservation ID</label>
+      <input id="lookup-id" autocomplete="off" required>
+      <button type="submit">Look up</button>
+    </form>
+    <pre id="lookup-out" aria-live="polite"></pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status');
+
+function newKey() {
+  if (window.crypto && crypto.randomUUID) return 'ui-' + crypto.randomUUID();
+  return 'ui-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+}
+function show(msg, ok) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + (ok ? 'ok' : 'err');
+}
+function errText(body, res) {
+  if (body && body.error) {
+    return typeof body.error === 'string' ? body.error : (body.error.message || body.error.code);
+  }
+  return 'HTTP ' + res.status;
+}
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const res = await fetch(path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  return { res, data };
+}
+function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+
+async function loadSessions() {
+  const { res, data } = await api('GET', '/sessions');
+  if (!res.ok) { show('Could not load sessions: ' + errText(data, res), false); return; }
+  const tbody = $('sessions-body'); tbody.replaceChildren();
+  const select = $('session'); const prev = select.value; select.replaceChildren();
+  for (const s of data.sessions) {
+    const tr = document.createElement('tr');
+    tr.dataset.sessionId = s.id;
+    tr.append(cell(s.id), cell(s.title), cell(s.capacity), cell(s.activeCount));
+    const rem = cell(s.remainingSeats);
+    if (s.remainingSeats === 0) { rem.textContent = '0 (full)'; rem.className = 'full'; }
+    tr.append(rem); tbody.append(tr);
+    const opt = document.createElement('option');
+    opt.value = s.id; opt.textContent = s.id + ' — ' + s.title + ' (' + s.remainingSeats + ' left)';
+    select.append(opt);
+  }
+  if (prev) select.value = prev;
+  $('sessions-updated').textContent = 'Read from server at ' + new Date().toLocaleTimeString();
+}
+
+async function loadReservations() {
+  const { res, data } = await api('GET', '/reservations');
+  if (!res.ok) { show('Could not load reservations: ' + errText(data, res), false); return; }
+  const tbody = $('res-body'); tbody.replaceChildren();
+  if (!data.reservations.length) {
+    const tr = document.createElement('tr'); const td = cell('No reservations yet.'); td.colSpan = 6; tr.append(td); tbody.append(tr);
+  }
+  for (const r of data.reservations) {
+    const tr = document.createElement('tr');
+    tr.append(cell(r.id), cell(r.sessionId), cell(r.attendeeAlias), cell(r.requestKey), cell(r.status));
+    const td = document.createElement('td');
+    if (r.status === 'active') {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = 'Cancel';
+      b.setAttribute('aria-label', 'Cancel reservation for ' + r.attendeeAlias + ' in ' + r.sessionId);
+      b.addEventListener('click', () => cancel(r.id));
+      td.append(b);
+    } else { td.textContent = '—'; }
+    tr.append(td); tbody.append(tr);
+  }
+}
+
+async function refresh() { await Promise.all([loadSessions(), loadReservations()]); }
+
+async function cancel(id) {
+  const { res, data } = await api('POST', '/reservations/' + encodeURIComponent(id) + '/cancel', {});
+  if (res.ok) show('Cancelled reservation ' + data.id + ' (status: ' + data.status + ').', true);
+  else show('Cancel failed: ' + errText(data, res), false);
+  await refresh();
+}
+
+$('reserve-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const alias = $('alias').value;
+  const key = $('key').value;
+  if (!alias.trim()) { show('Attendee alias must not be blank.', false); $('alias').focus(); return; }
+  if (!key) { show('Request key is required.', false); $('key').focus(); return; }
+  $('reserve-btn').disabled = true;
+  try {
+    const { res, data } = await api('POST', '/reservations', { sessionId: $('session').value, attendeeAlias: alias, requestKey: key });
+    if (res.ok) {
+      const replay = res.status === 200 ? ' (replay of an existing request)' : '';
+      show('Server confirmed reservation ' + data.id + ' for ' + data.attendeeAlias + ' in ' + data.sessionId + ', status ' + data.status + replay + '.', true);
+      $('alias').value = ''; $('key').value = newKey();
+    } else {
+      show('Reservation rejected (HTTP ' + res.status + '): ' + errText(data, res), false);
+    }
+  } catch (e) {
+    show('Network error: ' + e.message, false);
+  } finally {
+    $('reserve-btn').disabled = false;
+    await refresh();
+  }
+});
+
+$('lookup-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const id = $('lookup-id').value.trim();
+  if (!id) { $('lookup-out').textContent = 'Enter a reservation ID.'; return; }
+  const { res, data } = await api('GET', '/reservations/' + encodeURIComponent(id));
+  $('lookup-out').textContent = 'HTTP ' + res.status + '\n' + JSON.stringify(data, null, 2);
+});
+
+$('refresh').addEventListener('click', refresh);
+$('key').value = newKey();
+refresh();
+</script>
+</body>
+</html>
