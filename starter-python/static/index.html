@@ -180,6 +180,7 @@
   body.tech aside.receipts.tech-only { display: flex !important; }
   body.tech .invariants.tech-only { display: grid !important; }
   body.tech .row-actions .tech-only { display: inline-block !important; }
+  body:not(.tech) td.rid { display: none; }
   body:not(.tech) main { grid-template-columns: minmax(0, 1fr); max-width: 1000px; }
   body:not(.tech) form.reserve { grid-template-columns: 1fr 1fr auto; }
   @media (max-width: 760px) { body:not(.tech) form.reserve { grid-template-columns: 1fr; } }
@@ -390,7 +391,7 @@ async function loadSessions(quiet) {
       h('div', { class: 'seats', role: 'img', 'aria-label': s.activeCount + ' of ' + s.capacity + ' seats taken' }, seats),
       h('dl', { class: 'stats' },
         h('div', {}, h('dt', {}, 'Capacity'), h('dd', {}, s.capacity)),
-        h('div', {}, h('dt', {}, 'Booked'), h('dd', {}, s.activeCount)),
+        h('div', {}, h('dt', {}, 'Active'), h('dd', {}, s.activeCount)),
         h('div', {}, h('dt', {}, 'Remaining'), h('dd', {}, s.remainingSeats))),
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'sm', disabled: full, onclick: () => pickSession(s.id) }, 'Book here'),
@@ -440,7 +441,7 @@ async function loadReservations(quiet, flashId) {
         : null);
     const isNew = (flashId && r.id === flashId) || (lastIds.size && !lastIds.has(r.id));
     tbody.append(h('tr', { class: isNew ? 'flash' : '' },
-      h('td', { class: 'rid tech-only', title: r.id }, r.id.length > 16 ? r.id.slice(0, 16) + '…' : r.id),
+      h('td', { class: 'rid', title: r.id }, r.id.length > 16 ? r.id.slice(0, 16) + '…' : r.id),
       h('td', { title: r.sessionId }, titleOf(r.sessionId)),
       h('td', {}, r.attendeeAlias),
       h('td', { class: 'mono tech-only' }, r.requestKey),
